@@ -92,7 +92,7 @@ class Bot(discord.Client):
     async def parseBotCmd(self, msg):
         msgContent = msg.content[1:].split()
         if msgContent[0] in {'bkt', 'BKT'}:
-            await self.bkt(msg, msgContent)  
+            await self.bkt(msg, msgContent)
     
     async def decodeTimes(self, binary, offset):
         minutes = int.from_bytes(binary[offset:offset+1], 'big') >> 1
@@ -117,9 +117,6 @@ class Bot(discord.Client):
             offset = 0x11  + (lap * 3)
             lapTime = await self.decodeTimes(binary, offset)
             laps.append(lapTime)
-        print(laps[0])
-        print(laps[1])
-        print(laps[2])
         return laps
     
     async def getCategory(self, folder, folderContents, msgContent):
@@ -158,41 +155,19 @@ class Bot(discord.Client):
         files = []
         folderContents = repo.get_contents(folder)
         for file in folderContents:
-            print(file.name)
             if 'Placeholder' in file.name:
                 return
             if laps in file.name:
                 files.append(file)
         return files
+    
+    async def parseBKTLinks(self, msg, files):
+        track = files[0].path.split('/')[0][4:]
         
-    async def bkt(self, msg, msgContent):
-        # Get track folder
-        try:
-            folder = track_folders[msgContent[1]]
-        except:
-            return
+        # Embed post
+        embed = discord.Embed(title=track, description="BKT", color=0x008800)
         
-        # Check for empty course folder
-        folderContents = repo.get_contents(folder)
-        if folderContents is None:
-            return
-        
-        (folder, msgContent) = await self.getCategory(folder, folderContents, msgContent)
-        
-        # Handle the case when no 3lap/flap is provided
-        try:
-            laps = lap_choices[msgContent[2]]
-        except:
-            laps = ''
-        
-        # Check if we should get all ghost files
-        files = await self.getFiles(msg, laps, folder)
-        
-        if files == [None]:
-            return
-            
-        # Parse the URLs
-        response = ""
+        #response = f"**{track}**\n"
         for file in files:
             fileDirs = file.path.split('/')
             if len(fileDirs) == 2:
@@ -205,15 +180,45 @@ class Bot(discord.Client):
             laptimes = await self.getlapTimes(file)
             fileURL = repo.html_url + "/blob/main/" + file.path.replace(' ', '%20')
             
-            print(category)
             if laps == '3lap':
-                response = response + f"**{category} {laps} - {time} ({laptimes[0]}, {laptimes[1]}, {laptimes[2]}):** <{fileURL}>\n"
+                embed.add_field(name=category, value=f"{laps} - {time} ({laptimes[0]}, {laptimes[1]}, {laptimes[2]})\n{fileURL}", inline=False)
+                #response = response + f"\t**{category} {laps} - {time} ({laptimes[0]}, {laptimes[1]}, {laptimes[2]}):** <{fileURL}>\n"
             elif laps == 'Flap':
-                response = response + f"**{category} {laps} ({laptimes[0]}, {laptimes[1]}, {laptimes[2]}):** <{fileURL}>\n"
-        if response == "":
+                embed.add_field(name=category, value=f"{laps} ({laptimes[0]}, {laptimes[1]}, {laptimes[2]})\n{fileURL}", inline=False)
+                #response = response + f"\t**{category} {laps} ({laptimes[0]}, {laptimes[1]}, {laptimes[2]}):** <{fileURL}>\n"
+        if embed.fields == discord.Embed.Empty:
             return
-        await msg.channel.send(response)
+        #await msg.channel.send(response)
+        await msg.channel.send(embed=embed)
     
+    async def bkt(self, msg, msgContent):
+        # Get track folder
+        try:
+            track_folder = track_folders[msgContent[1]]
+        except:
+            return
+        
+        # Check for empty course folder
+        folderContents = repo.get_contents(track_folder)
+        if folderContents is None:
+            return
+        
+        (cat_folder, msgContent) = await self.getCategory(track_folder, folderContents, msgContent)
+        
+        # Handle the case when no 3lap/flap is provided
+        try:
+            laps = lap_choices[msgContent[2]]
+        except:
+            laps = ''
+        
+        # Check if we should get all ghost files
+        files = await self.getFiles(msg, laps, cat_folder)
+        
+        if files == [None]:
+            return
+            
+        # Parse the URLs
+        await self.parseBKTLinks(msg, files)
 
 def getRepoObj():
     for repo in g.get_user().get_repos():
