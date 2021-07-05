@@ -101,17 +101,8 @@ class Bot(discord.Client):
         
         # Assert format x:xx:xxx
         minutes = str(minutes)
-        if seconds < 10:
-            seconds = '0' + str(seconds)
-        else:
-            seconds = str(seconds)
-        if ms < 100:
-            if ms < 10:
-                ms = '00' + str(ms)
-            else:
-                ms = '0' + str(ms)
-        else:
-            ms = str(ms)
+        seconds = str(seconds).zfill(2)
+        ms = str(ms).zfill(3)
         return minutes+':'+seconds+'.'+ms
     
     async def get3lapTime(self, file):
