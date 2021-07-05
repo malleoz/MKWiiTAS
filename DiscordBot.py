@@ -77,6 +77,13 @@ class Bot(discord.Client):
         if msg.channel.id != CHANNEL_ID:
             return
         
+        '''
+        # Example to only allow TASLabz role members
+        role = discord.utils.find(lambda r: r.name == 'TASLabz', msg.channel.guild.roles)
+        if role in msg.author.roles:
+            print("Cool")
+        '''
+        
         # Check for bot command
         if len(msg.content) > 0 and msg.content[0] == CMD_PREFIX:
             await self.parseBotCmd(msg)
@@ -86,6 +93,43 @@ class Bot(discord.Client):
         msgContent = msg.content[1:].split()
         if msgContent[0] in {'bkt', 'BKT'}:
             await self.bkt(msg, msgContent)  
+    
+    async def decodeTimes(self, binary, offset):
+        minutes = int.from_bytes(binary[offset:offset+1], 'big') >> 1
+        seconds = (int.from_bytes(binary[offset:offset+2], 'big') & 0x01fc) >> 2
+        ms = int.from_bytes(binary[offset+1:offset+3], 'big') & 0x03ff
+        
+        # Assert format x:xx:xxx
+        minutes = str(minutes)
+        if seconds < 10:
+            seconds = '0' + str(seconds)
+        else:
+            seconds = str(seconds)
+        if ms < 100:
+            if ms < 10:
+                ms = '00' + str(ms)
+            else:
+                ms = '0' + str(ms)
+        else:
+            ms = str(ms)
+        return minutes+':'+seconds+'.'+ms
+    
+    async def get3lapTime(self, file):
+        binary = file.decoded_content
+        
+        return await self.decodeTimes(binary, 0x4)
+    
+    async def getlapTimes(self, file):
+        binary = file.decoded_content
+        laps = []
+        for lap in range (0, 3):
+            offset = 0x11  + (lap * 3)
+            lapTime = await self.decodeTimes(binary, offset)
+            laps.append(lapTime)
+        print(laps[0])
+        print(laps[1])
+        print(laps[2])
+        return laps
     
     async def getCategory(self, folder, folderContents, msgContent):
         if folderContents[0].type == 'dir':
@@ -123,9 +167,10 @@ class Bot(discord.Client):
         files = []
         folderContents = repo.get_contents(folder)
         for file in folderContents:
+            print(file.name)
             if 'Placeholder' in file.name:
                 return
-            if lap_choices[laps] in file.name:
+            if laps in file.name:
                 files.append(file)
         return files
         
@@ -145,7 +190,7 @@ class Bot(discord.Client):
         
         # Handle the case when no 3lap/flap is provided
         try:
-            laps = msgContent[2]
+            laps = lap_choices[msgContent[2]]
         except:
             laps = ''
         
@@ -158,10 +203,22 @@ class Bot(discord.Client):
         # Parse the URLs
         response = ""
         for file in files:
-            category = file.path.split('/')[-2]
-            laps = file.path.split('/')[-1][:4]
+            fileDirs = file.path.split('/')
+            if len(fileDirs) == 2:
+                # There are no categories on this course
+                category = ''
+            else:
+                category = fileDirs[-2]
+            laps = fileDirs[-1][:4]
+            time = await self.get3lapTime(file)
+            laptimes = await self.getlapTimes(file)
             fileURL = repo.html_url + "/blob/main/" + file.path.replace(' ', '%20')
-            response = response + f"**{category} {laps}:** <{fileURL}>\n"
+            
+            print(category)
+            if laps == '3lap':
+                response = response + f"**{category} {laps} - {time} ({laptimes[0]}, {laptimes[1]}, {laptimes[2]}):** <{fileURL}>\n"
+            elif laps == 'Flap':
+                response = response + f"**{category} {laps} ({laptimes[0]}, {laptimes[1]}, {laptimes[2]}):** <{fileURL}>\n"
         if response == "":
             return
         await msg.channel.send(response)
