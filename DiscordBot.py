@@ -59,6 +59,12 @@ category_folders = {
     'UR' : '/Unrestricted'
 }
 
+lap_choices = {
+    'flap' : 'Flap',
+    'Flap' : 'Flap',
+    '3lap' : '3lap'
+}
+
 class Bot(discord.Client):
     async def on_ready(self):
         print(f'{self.user} is connected.')
@@ -103,20 +109,25 @@ class Bot(discord.Client):
     async def getFiles(self, msg, laps, folder):
         files = []
         folderContents = repo.get_contents(folder)
-        for subfolder in folderContents:
-            temp = await self.getFile(msg, laps, subfolder.path)
-            if temp is not None:
-                files.append(temp)
-        print(files)
-        return files
+        if folderContents[0].type == 'dir':
+            for subfolder in folderContents:
+                temp = await self.getFile(msg, laps, subfolder.path)
+                if temp is not None:
+                    files += temp
+            return files
+        else:
+            return await self.getFile(msg, laps, folder)
     
     async def getFile(self, msg, laps, folder):
         # Check that relevant file is there
+        files = []
         folderContents = repo.get_contents(folder)
         for file in folderContents:
-            if laps in file.name:
-                return file
-        return
+            if 'Placeholder' in file.name:
+                return
+            if lap_choices[laps] in file.name:
+                files.append(file)
+        return files
         
     async def bkt(self, msg, msgContent):
         # Get track folder
@@ -132,12 +143,14 @@ class Bot(discord.Client):
         
         (folder, msgContent) = await self.getCategory(folder, folderContents, msgContent)
         
+        # Handle the case when no 3lap/flap is provided
+        try:
+            laps = msgContent[2]
+        except:
+            laps = ''
+        
         # Check if we should get all ghost files
-        if repo.get_contents(folder)[0].type == 'dir':
-            files = await self.getFiles(msg, msgContent[2], folder)
-        else:
-            files = await self.getFile(msg, msgContent[2], folder)
-            files = [files]
+        files = await self.getFiles(msg, laps, folder)
         
         if files == [None]:
             return
