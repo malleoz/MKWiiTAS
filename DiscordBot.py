@@ -51,12 +51,12 @@ track_folders = {
 }
 
 category_folders = {
-    'g'  : '/Glitch',
     'ng' : '/No Glitch',
-    'sg' : '/SG',
-    'nsg': '/No SG',
+    'NG' : '/No Glitch',
     'nu' : '/No Ultra',
-    'u'  : '/Ultra'
+    'NU' : '/No Ultra',
+    'ur' : '/Unrestricted',
+    'UR' : '/Unrestricted'
 }
 
 class Bot(discord.Client):
@@ -72,72 +72,86 @@ class Bot(discord.Client):
             return
         
         # Check for bot command
-        if msg.content[0] == CMD_PREFIX:
+        if len(msg.content) > 0 and msg.content[0] == CMD_PREFIX:
             await self.parseBotCmd(msg)
         return
     
     async def parseBotCmd(self, msg):
         msgContent = msg.content[1:].split()
         if msgContent[0] in {'bkt', 'BKT'}:
-            await self.bkt(msg, msgContent)
+            await self.bkt(msg, msgContent)  
+    
+    async def getCategory(self, folder, folderContents, msgContent):
+        if folderContents[0].type == 'dir':
+            # We see folders under the course, so we need categories
+            try:
+                folder += category_folders[msgContent[2]]
+            except:
+                # Invalid or missing category - Link all ghosts
+                return (folder, msgContent)
+        
+            # Check for empty category folder
+            folderContents = repo.get_contents(folder)
+            if folderContents is None:
+                return (None, None)
             
-            
-            
+            # Strip out category
+            msgContent = msgContent[0:2] + msgContent[3:]
+                
+        return (folder, msgContent)
+    
+    async def getFiles(self, msg, laps, folder):
+        files = []
+        folderContents = repo.get_contents(folder)
+        for subfolder in folderContents:
+            temp = await self.getFile(msg, laps, subfolder.path)
+            if temp is not None:
+                files.append(temp)
+        print(files)
+        return files
+    
+    async def getFile(self, msg, laps, folder):
+        # Check that relevant file is there
+        folderContents = repo.get_contents(folder)
+        for file in folderContents:
+            if laps in file.name:
+                return file
+        return
+        
     async def bkt(self, msg, msgContent):
+        # Get track folder
         try:
             folder = track_folders[msgContent[1]]
         except:
-            response = "Unrecognized track."
-            await msg.channel.send(response)
             return
         
+        # Check for empty course folder
         folderContents = repo.get_contents(folder)
-        
         if folderContents is None:
-            response = "Invalid command. Check that this track has the necessary folders."
-            await msg.channel.send(response)
-            print("Invalid command") #TODO: Print error message to Discord
             return
         
-        # Now check for 3lap/flap
-        if len(msgContent) < 3:
-            response = "Missing 3lap or flap (handle this later)."
-            await msg.channel.send(response)
-            print("Invalid command") #TODO: Print error message to Discord
-            return
+        (folder, msgContent) = await self.getCategory(folder, folderContents, msgContent)
         
-        if msgContent[2] == '3lap':
-            folder += '/3lap'
-            folderContents = repo.get_contents(folder)
-        elif msgContent[2] == 'flap':
-            folder += '/flap'
-            folderContents = repo.get_contents(folder)
+        # Check if we should get all ghost files
+        if repo.get_contents(folder)[0].type == 'dir':
+            files = await self.getFiles(msg, msgContent[2], folder)
         else:
-            response = "Invalid command. Specify 3lap or flap."
-            await msg.channel.send(response)
-            return
-    
-        # Now check if this course has categories
-        if len(folderContents) == 1:
-            # No categories
-            # Replace whitespace with %20
-            fileURL = folderContents[0].path.replace(' ', '%20')
-            response = "<" + repo.html_url + "/blob/main/" + fileURL + ">"
-            await msg.channel.send(response)
-            return
+            files = await self.getFile(msg, msgContent[2], folder)
+            files = [files]
         
-        try:
-            folder += category_folders[msgContent[3]]
-        except:
-            response = "Invalid category for this track."
-            await msg.channel.send(response)
+        if files == [None]:
             return
             
-        folderContents = repo.get_contents(folder)
-        fileURL = folderContents[0].path.replace(' ', '%20')
-        response = "<" + repo.html_url + "/blob/main/" + fileURL + ">"
+        # Parse the URLs
+        response = ""
+        for file in files:
+            category = file.path.split('/')[-2]
+            laps = file.path.split('/')[-1][:4]
+            fileURL = repo.html_url + "/blob/main/" + file.path.replace(' ', '%20')
+            response = response + f"**{category} {laps}:** <{fileURL}>\n"
+        if response == "":
+            return
         await msg.channel.send(response)
-        return
     
 
 def getRepoObj():
