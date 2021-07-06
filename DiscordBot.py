@@ -178,13 +178,13 @@ class Bot(discord.Client):
             laps = fileDirs[-1][:4]
             time = await self.get3lapTime(file)
             laptimes = await self.getlapTimes(file)
-            fileURL = repo.html_url + "/blob/main/" + file.path.replace(' ', '%20')
+            fileURL = repo.html_url + "/blob/main/" + file.path.replace(' ', '%20') + "?raw=true"
             
             if laps == '3lap':
-                embed.add_field(name=category, value=f"{laps} - {time} ({laptimes[0]}, {laptimes[1]}, {laptimes[2]})\n{fileURL}", inline=False)
+                embed.add_field(name=category, value=f"[{laps} - {time} ({laptimes[0]}, {laptimes[1]}, {laptimes[2]})]({fileURL})", inline=False)
                 #response = response + f"\t**{category} {laps} - {time} ({laptimes[0]}, {laptimes[1]}, {laptimes[2]}):** <{fileURL}>\n"
             elif laps == 'Flap':
-                embed.add_field(name=category, value=f"{laps} ({laptimes[0]}, {laptimes[1]}, {laptimes[2]})\n{fileURL}", inline=False)
+                embed.add_field(name=category, value=f"[{laps} ({laptimes[0]}, {laptimes[1]}, {laptimes[2]})]({fileURL})", inline=False)
                 #response = response + f"\t**{category} {laps} ({laptimes[0]}, {laptimes[1]}, {laptimes[2]}):** <{fileURL}>\n"
         if embed.fields == discord.Embed.Empty:
             return
