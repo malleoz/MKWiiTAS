@@ -168,27 +168,48 @@ class Bot(discord.Client):
         embed = discord.Embed(title=track, description="BKT", color=0x008800)
         
         #response = f"**{track}**\n"
+        last_cat = ''
+        value = ''
         for file in files:
             fileDirs = file.path.split('/')
             if len(fileDirs) == 2:
                 # There are no categories on this course
-                category = ''
+                category = 'Unrestricted'
             else:
                 category = fileDirs[-2]
+            
+            # If we have cached one ghost which is a different category from the current ghost,
+            # Add embed field for the cached ghost
+            if last_cat not in {category, ''}:
+                embed.add_field(name=last_cat, value=value, inline=False)
+                value = ''
+            
             laps = fileDirs[-1][:4]
             time = await self.get3lapTime(file)
             laptimes = await self.getlapTimes(file)
             fileURL = repo.html_url + "/blob/main/" + file.path.replace(' ', '%20') + "?raw=true"
             
             if laps == '3lap':
-                embed.add_field(name=category, value=f"[{laps} - {time} ({laptimes[0]}, {laptimes[1]}, {laptimes[2]})]({fileURL})", inline=False)
+                value+=f"[{laps} - {time} ({laptimes[0]}, {laptimes[1]}, {laptimes[2]})]({fileURL})\n"
                 #response = response + f"\t**{category} {laps} - {time} ({laptimes[0]}, {laptimes[1]}, {laptimes[2]}):** <{fileURL}>\n"
             elif laps == 'Flap':
-                embed.add_field(name=category, value=f"[{laps} ({laptimes[0]}, {laptimes[1]}, {laptimes[2]})]({fileURL})", inline=False)
+                value+=f"[{laps} ({laptimes[0]}, {laptimes[1]}, {laptimes[2]})]({fileURL})\n"
                 #response = response + f"\t**{category} {laps} ({laptimes[0]}, {laptimes[1]}, {laptimes[2]}):** <{fileURL}>\n"
+            
+            # In order to handle groupings of 3lap+flap for one category field,
+            # do one of the following
+            if file == files[-1]: # if last ghost, force field add
+                embed.add_field(name=category, value=value, inline=False)
+            elif last_cat == category: # We looked at 3lap, now looking at flap, done w/ category so add field
+                embed.add_field(name=category, value=value, inline=False)
+                value = ''
+                last_cat = ''
+            else: # there may be another ghost for this category so wait to check the next ghost
+                last_cat = category
+                
         if embed.fields == discord.Embed.Empty:
             return
-        #await msg.channel.send(response)
+            
         await msg.channel.send(embed=embed)
     
     async def bkt(self, msg, msgContent):
