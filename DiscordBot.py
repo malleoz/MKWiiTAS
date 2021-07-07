@@ -106,11 +106,23 @@ class Bot(discord.Client):
         return minutes+':'+seconds+'.'+ms
     
     async def get3lapTime(self, file):
+        if file.path[-4:] == '.txt':
+            # Ghost does not exist in repo
+            # Retrieve time from file`
+            binary = file.decoded_content.decode().split('\n')
+            return binary[0]
+            
         binary = file.decoded_content
         
         return await self.decodeTimes(binary, 0x4)
     
     async def getlapTimes(self, file):
+        if file.path[-4:] == '.txt':
+            # Ghost does not exist in repo
+            # Retrieve lap times from file`
+            binary = file.decoded_content.decode().split('\n')
+            return [str(binary[1]), str(binary[2]), str(binary[3])]
+        
         binary = file.decoded_content
         laps = []
         for lap in range (0, 3):
@@ -118,6 +130,10 @@ class Bot(discord.Client):
             lapTime = await self.decodeTimes(binary, offset)
             laps.append(lapTime)
         return laps
+        
+    async def getPlaceholderYTLink(self, file):
+        binary = file.decoded_content.decode().split('\n')
+        return binary[-2]
     
     async def getCategory(self, folder, folderContents, msgContent):
         if folderContents[0].type == 'dir':
@@ -141,24 +157,13 @@ class Bot(discord.Client):
     async def getFiles(self, msg, laps, folder):
         files = []
         folderContents = repo.get_contents(folder)
-        if folderContents[0].type == 'dir':
-            for subfolder in folderContents:
-                temp = await self.getFile(msg, laps, subfolder.path)
+        for content in folderContents:
+            if content.type == 'dir':
+                temp = await self.getFiles(msg, laps, content.path)
                 if temp is not None:
                     files += temp
-            return files
-        else:
-            return await self.getFile(msg, laps, folder)
-    
-    async def getFile(self, msg, laps, folder):
-        # Check that relevant file is there
-        files = []
-        folderContents = repo.get_contents(folder)
-        for file in folderContents:
-            if 'Placeholder' in file.name:
-                return
-            if laps in file.name:
-                files.append(file)
+            else:
+                files.append(content)
         return files
     
     async def parseBKTLinks(self, msg, files):
@@ -189,12 +194,14 @@ class Bot(discord.Client):
             laptimes = await self.getlapTimes(file)
             fileURL = repo.html_url + "/blob/main/" + file.path.replace(' ', '%20') + "?raw=true"
             
-            if laps == '3lap':
-                value+=f"[{laps} - {time} ({laptimes[0]}, {laptimes[1]}, {laptimes[2]})]({fileURL})\n"
-                #response = response + f"\t**{category} {laps} - {time} ({laptimes[0]}, {laptimes[1]}, {laptimes[2]}):** <{fileURL}>\n"
-            elif laps == 'Flap':
-                value+=f"[{laps} ({laptimes[0]}, {laptimes[1]}, {laptimes[2]})]({fileURL})\n"
-                #response = response + f"\t**{category} {laps} ({laptimes[0]}, {laptimes[1]}, {laptimes[2]}):** <{fileURL}>\n"
+            noGhost = ''
+            
+            if file.path[-4:] == '.txt':
+                # Remove embed link since not a valid ghost file
+                noGhost = '(No ghost on repo)'
+                fileURL = await self.getPlaceholderYTLink(file)
+            
+            value+=f"[{laps} - {time} ({laptimes[0]}, {laptimes[1]}, {laptimes[2]})]({fileURL}) {noGhost}\n"
             
             # In order to handle groupings of 3lap+flap for one category field,
             # do one of the following
