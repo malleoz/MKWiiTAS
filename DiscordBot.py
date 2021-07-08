@@ -194,14 +194,14 @@ class Bot(discord.Client):
             laptimes = await self.getlapTimes(file)
             fileURL = repo.html_url + "/blob/main/" + file.path.replace(' ', '%20') + "?raw=true"
             
-            noGhost = ''
+            linkText = 'DL'
             
             if file.path[-4:] == '.txt':
                 # Remove embed link since not a valid ghost file
-                noGhost = '(No ghost on repo)'
+                linkText = 'No ghost on repo'
                 fileURL = await self.getPlaceholderYTLink(file)
             
-            value+=f"[{laps} - {time} ({laptimes[0]}, {laptimes[1]}, {laptimes[2]})]({fileURL}) {noGhost}\n"
+            value+=f"{laps} - {time} ({laptimes[0]}, {laptimes[1]}, {laptimes[2]}) [[{linkText}]]({fileURL})\n"
             
             # In order to handle groupings of 3lap+flap for one category field,
             # do one of the following
