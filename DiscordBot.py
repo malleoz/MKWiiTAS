@@ -162,7 +162,7 @@ class Bot(discord.Client):
                 temp = await self.getFiles(msg, laps, content.path)
                 if temp is not None:
                     files += temp
-            else:
+            elif laps in content.name:
                 files.append(content)
         return files
     
