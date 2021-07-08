@@ -16,38 +16,38 @@ CMD_PREFIX = '!'
 g = Github(GITHUB_ACCESS_TOKEN)
 
 track_folders = {
-    'LC'   : '01. Luigi Circuit',
-    'MMM'  : '02. Moo Moo Meadows',
-    'MG'   : '03. Mushroom Gorge',
-    'TF'   : '04. Toad\'s Factory',
-    'MC'   : '05. Mario Circuit',
-    'CM'   : '06. Coconut Mall',
-    'DKS'  : '07. DK Summit',
-    'WGM'  : '08. Wario\'s Gold Mine',
-    'DC'   : '09. Daisy Circuit',
-    'KC'   : '10. Koopa Cape',
-    'MT'   : '11. Maple Treeway',
-    'GV'   : '12. Grumble Volcano',
-    'DDR'  : '13. Dry Dry Ruins',
-    'MH'   : '14. Moonview Highway',
-    'BC'   : '15. Bowser\'s Castle',
-    'RR'   : '16. Rainbow Road',
-    'rPB'  : '17. GCN Peach Beach',
-    'rYF'  : '18. DS Yoshi Falls',
-    'rGV2' : '19. SNES Ghost Valley 2',
-    'rMR'  : '20. N64 Mario Raceway',
-    'rSL'  : '21. N64 Sherbet Land',
-    'rSGB' : '22. GBA Shy Guy Beach',
-    'rDS'  : '23. DS Delfino Square',
-    'rWS'  : '24. GCN Waluigi Stadium',
-    'rDH'  : '25. DS Desert Hills',
-    'rBC3' : '26. GBA Bowser Castle 3',
-    'rDKJP': '27. N64 DK\'s Jungle Parkway',
-    'rMC'  : '28. GCN Mario Circuit',
-    'rMC3' : '29. SNES Mario Circuit 3',
-    'rPG'  : '30. DS Peach Gardens',
-    'rDKM' : '31. GCN DK Mountain',
-    'rBC'  : '32. N64 Bowser\'s Castle'
+    'lc'   : '01. Luigi Circuit',
+    'mmm'  : '02. Moo Moo Meadows',
+    'mg'   : '03. Mushroom Gorge',
+    'tf'   : '04. Toad\'s Factory',
+    'mc'   : '05. Mario Circuit',
+    'cm'   : '06. Coconut Mall',
+    'dks'  : '07. DK Summit',
+    'wgm'  : '08. Wario\'s Gold Mine',
+    'dc'   : '09. Daisy Circuit',
+    'kc'   : '10. Koopa Cape',
+    'mt'   : '11. Maple Treeway',
+    'gv'   : '12. Grumble Volcano',
+    'ddr'  : '13. Dry Dry Ruins',
+    'mh'   : '14. Moonview Highway',
+    'bc'   : '15. Bowser\'s Castle',
+    'rr'   : '16. Rainbow Road',
+    'rpb'  : '17. GCN Peach Beach',
+    'ryf'  : '18. DS Yoshi Falls',
+    'rgv2' : '19. SNES Ghost Valley 2',
+    'rmr'  : '20. N64 Mario Raceway',
+    'rsl'  : '21. N64 Sherbet Land',
+    'rsgb' : '22. GBA Shy Guy Beach',
+    'rds'  : '23. DS Delfino Square',
+    'rws'  : '24. GCN Waluigi Stadium',
+    'rdh'  : '25. DS Desert Hills',
+    'rbc3' : '26. GBA Bowser Castle 3',
+    'rdkjp': '27. N64 DK\'s Jungle Parkway',
+    'rmc'  : '28. GCN Mario Circuit',
+    'rmc3' : '29. SNES Mario Circuit 3',
+    'rpg'  : '30. DS Peach Gardens',
+    'rdkm' : '31. GCN DK Mountain',
+    'rbc'  : '32. N64 Bowser\'s Castle'
 }
 
 category_folders = {
@@ -222,7 +222,7 @@ class Bot(discord.Client):
     async def bkt(self, msg, msgContent):
         # Get track folder
         try:
-            track_folder = track_folders[msgContent[1]]
+            track_folder = track_folders[msgContent[1].lower()]
         except:
             return
         
