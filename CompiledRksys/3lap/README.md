@@ -11,6 +11,7 @@ Because not every ghost is uploaded to mkwtas.com, here is the list of available
 - [ ] Wario's Gold Mine
 - [ ] Daisy Circuit
 - [x] Maple Treeway
+- [ ] Koopa Cape
 - [ ] Grumble Volcano
 - [ ] Dry Dry Ruins
 - [x] Rainbow Road
