@@ -201,7 +201,7 @@ class Bot(discord.Client):
                 linkText = 'No ghost on repo'
                 fileURL = await self.getPlaceholderYTLink(file)
             
-            value+=f"{laps} - {time} ({laptimes[0]}, {laptimes[1]}, {laptimes[2]}) [[{linkText}]]({fileURL})\n"
+            value+=f"[{laps}]({fileURL}) - {time} ({laptimes[0]}, {laptimes[1]}, {laptimes[2]})\n"
             
             # In order to handle groupings of 3lap+flap for one category field,
             # do one of the following
