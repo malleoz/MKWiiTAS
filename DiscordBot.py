@@ -197,7 +197,10 @@ class Bot(discord.Client):
         
         # Sort laps based off of time
         lapSeconds.sort(key = lambda x: x[0])
-        return lapSeconds[0][1]
+        try:
+            return lapSeconds[0][1]
+        except:
+            return -1 # No lap times provided
     
     async def bktEmbed(self, msg, files):
         track = files[0].path.split('/')[0][4:]
@@ -239,10 +242,18 @@ class Bot(discord.Client):
             value += f"[{laps}]({ytLink}) - "
             
             if laps == '3lap':
-                value+=f"{time} ({laptimes[0]}, {laptimes[1]}, {laptimes[2]})"
+                if time == "No TAS Yet":
+                    value+=time
+                else:
+                    value+=f"{time} ({laptimes[0]}, {laptimes[1]}, {laptimes[2]})"
             elif laps == 'Flap':
+                print(bkt.path)
                 fastLapIndex = await self.getFastestLapIndex(laptimes)
-                value+=f"{laptimes[fastLapIndex]} (Final Time: {time})"
+                if fastLapIndex == -1:
+                    # No laps provided
+                    value+="No TAS Yet"
+                else:
+                    value+=f"{laptimes[fastLapIndex]} (Final Time: {time})"
             
             value += f" [{linkText}]({rkgLink})\n"
 
