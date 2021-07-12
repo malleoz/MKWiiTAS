@@ -283,8 +283,14 @@ class Bot(discord.Client):
     
     async def embedError(self, msg, error, cmd, details):
         cmdHelp = await self.cmdHelp(cmd)
-        if details == 'track':
+        if 'track' in details:
             cmdHelp += "\nUse one of the following:\n" + await self.printTracks(msg)
+        if 'attachment' in details:
+            cmdHelp += "\nAttach an RKG file to upload to the repository.\n"
+        if 'cat' in details:
+            cmdHelp += "\nUse one of the following: `UR NU NG`\n"
+        if 'lap' in details:
+            cmdHelp += "\nUse one of the following: `3lap flap`\n"
             
         embed = discord.Embed(title=error, description=cmdHelp, color=0xC13353)
         await msg.channel.send(embed=embed)
