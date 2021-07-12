@@ -247,8 +247,12 @@ class Bot(discord.Client):
                 else:
                     value+=f"{time} ({laptimes[0]}, {laptimes[1]}, {laptimes[2]})"
             elif laps == 'Flap':
-                print(bkt.path)
-                fastLapIndex = await self.getFastestLapIndex(laptimes)
+                if track == "Grumble Volcano" and category != "Unrestricted":
+                    # Special case where L1 uses ultra
+                    fastLapIndex = await self.getFastestLapIndex(laptimes[1:]) + 1
+                else:
+                    fastLapIndex = await self.getFastestLapIndex(laptimes)
+                    
                 if fastLapIndex == -1:
                     # No laps provided
                     value+="No TAS Yet"
