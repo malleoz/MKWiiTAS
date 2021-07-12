@@ -145,16 +145,16 @@ class Bot(discord.Client):
     
     async def getCategory(self, folder, folderContents, msgContent):
         if folderContents[0].type == 'dir':
-            # We see folders under the course, so we need categories
-            try:
-                # Append this subfolder to the folder path
-                folder += category_folders[msgContent[2].lower()]
-                
-                # Strip out category (to indistinguish this from cmd with no category specified)
-                msgContent = msgContent[0:2] + msgContent[3:]
-            except:
-                # Invalid or missing category - Link all ghosts
-                pass
+            # We see folders under the course, so we need categories (thanks rMC3)
+            
+            for word in msgContent:           
+                try:
+                    # Append this subfolder to the folder path
+                    folder += category_folders[word.lower()]
+                    msgContent.remove(word)
+                    break
+                except:
+                    pass
       
         return (folder, msgContent)
     
@@ -291,13 +291,22 @@ class Bot(discord.Client):
     
     async def bkt(self, msg, msgContent):
         # Get track folder
-        try:
-            track_folder = track_folders[msgContent[1].lower()]
-        except:
-            if len(msgContent) == 1:
-                error = "No track provided."
-                await self.embedError(msg, error, 'bkt', 'track')
-                return
+        if len(msgContent) == 0:
+            error = "No track provided"
+            await self.embedError(msg, error, 'bkt', 'track')
+            return
+        
+        for word in msgContent:
+            try:
+                track_folder = track_folders[word.lower()]
+                msgContent.remove(word)
+                break
+            except:
+                pass
+        else:
+            error = "No track found"
+            await self.embedError(msg, error, 'bkt', 'track')
+            return
         
         folderContents = repo.get_contents(track_folder)
         
@@ -305,10 +314,20 @@ class Bot(discord.Client):
         (cat_folder, msgContent) = await self.getCategory(track_folder, folderContents, msgContent)
         
         # Handle the case when no 3lap/flap is provided
-        try:
-            laps = lap_choices[msgContent[2].lower()]
-        except:
+        for word in msgContent:
+            try:
+                laps = lap_choices[word.lower()]
+                msgContent.remove(word)
+                break
+            except:
+                pass
+        else:
             laps = ''
+            
+        if len(msgContent) > 0:
+            error = f"Unexpected additional parameters in message body: `{msgContent}`"
+            await self.embedError(msg, error, 'bkt', '')
+            return
         
         # Get all relevant ghost files
         files = await self.getFiles(msg, laps, cat_folder)
