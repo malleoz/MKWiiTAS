@@ -10,11 +10,10 @@ load_dotenv()
 TOKEN = os.getenv('DISCORD_TOKEN')
 CHANNEL_ID = int(os.getenv('CHANNEL_ID'))
 GITHUB_ACCESS_TOKEN= os.getenv('GITHUB_ACCESS_TOKEN')
-REPO_NAME = 'MKWiiTAS'
-repo = None
 CMD_PREFIX = '!'
 
 g = Github(GITHUB_ACCESS_TOKEN)
+repo = g.get_repo("Malleoz/MKWiiTAS")
 
 track_folders = {
     'lc'   : '01. Luigi Circuit',
@@ -341,12 +340,7 @@ class Bot(discord.Client):
         # Parse the URLs
         await self.bktEmbed(msg, files)
 
-def getRepoObj():
-    for repo in g.get_user().get_repos():
-        if repo.name == REPO_NAME:
-            return repo
-    return None
 
-repo = getRepoObj()
-client = Bot()
-client.run(TOKEN)
+if __name__ == '__main__':
+    client = Bot()
+    client.run(TOKEN)
