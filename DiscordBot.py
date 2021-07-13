@@ -2,6 +2,7 @@
 # Perform GitHub API calls based on parsed chat commands
 import os
 import re
+import time
 import discord
 from dotenv import load_dotenv
 from github import Github
@@ -50,6 +51,40 @@ track_folders = {
     'rbc'  : '32. N64 Bowser\'s Castle'
 }
 
+special_slot_ids = {
+    0x08 : 'lc',
+    0x01 : 'mmm',
+    0x02 : 'mg',
+    0x04 : 'tf',
+    0x00 : 'mc',
+    0x05 : 'cm',
+    0x06 : 'dks',
+    0x07 : 'wgm',
+    0x09 : 'dc',
+    0x0f : 'kc',
+    0x0b : 'mt',
+    0x03 : 'gv',
+    0x0e : 'ddr',
+    0x0a : 'mh',
+    0x0c : 'bc',
+    0x0d : 'rr',
+    0x10 : 'rpb',
+    0x14 : 'ryf',
+    0x19 : 'rgv2',
+    0x1a : 'rmr',
+    0x1b : 'rsl',
+    0x1f : 'rsgb',
+    0x17 : 'rds',
+    0x12 : 'rws',
+    0x1e : 'rbc3',
+    0x1d : 'rdkjp',
+    0x11 : 'rmc',
+    0x18 : 'rmc3',
+    0x16 : 'rpg',
+    0x13 : 'rdkm',
+    0x1c : 'rbc'
+}
+
 category_folders = {
     'ng' : '/No Glitch',
     'nu' : '/No Ultra',
@@ -69,8 +104,26 @@ class Bot(discord.Client):
         response = ''
         if cmd in 'bkt':
              response += f'```css\n!bkt track [category] [laps]\n```'
-        
+        if cmd in 'add':
+            response += "```css\n" \
+                        "!add bkt category laps change_notes\n" \
+                        "!add bkt [track] category laps change_notes\n" \
+                        "```with an attached file, where category, track, and laps are in any order.\n"
         return response
+        
+    async def embedError(self, msg, error, cmd, details):
+        cmdHelp = await self.cmdHelp(cmd)
+        if 'track' in details:
+            cmdHelp += "\nUse one of the following:\n" + await self.printTracks(msg)
+        if 'attachment' in details:
+            cmdHelp += "\nAttach an RKG file to upload to the repository.\n"
+        if 'cat' in details:
+            cmdHelp += "\nUse one of the following: `UR NU NG`\n"
+        if 'lap' in details:
+            cmdHelp += "\nUse one of the following: `3lap flap`\n"
+            
+        embed = discord.Embed(title=error, description=cmdHelp, color=0xC13353)
+        return await msg.channel.send(embed=embed)
     
     async def on_message(self, msg):
         # Prevent recursion
@@ -92,7 +145,128 @@ class Bot(discord.Client):
         cmd = msgContent[0].lower()
         
         if cmd == 'bkt':
-            return await self.bkt(msg, msgContent)
+            return await self.bkt(msg, msgContent[1:])
+        if cmd == 'add':
+            return await self.add(msg, msgContent[1:])
+            
+    async def add(self, msg, msgContent):
+        if msgContent[0].lower() == 'bkt':
+            return await self.addBKT(msg, msgContent[1:])
+        if msgContent[0].lower() == 'wip':
+            return await self.addWIP(msg, msgContent[1:])
+        
+            
+    async def addBKT(self, msg, msgContent):        
+        # First, check file type before splitting off to handle the file upload
+        if len(msg.attachments) == 0:
+            error = "No attachment provided"
+            details = "attachment"
+            cmd = 'add'
+            await self.embedError(msg, error, cmd, details)
+            return
+        if len(msg.attachments) > 1:
+            error = "More than one attachment provided"
+            details = "attachment"
+            cmd = 'add'
+            await self.embedError(msg, error, cmd, details)
+            return
+        
+        attachment = msg.attachments[0]
+        
+        fileType = attachment.filename.split('.')[-1].lower()
+        
+        if fileType == 'rkg':
+            await self.addRKG(msg, msgContent, attachment, 'bkt')
+        else:
+            error = "Incorrect attachment file format"
+            details = "attachment"
+            cmd = 'add'
+            await self.embedError(msg, error, cmd, details)
+            return
+        
+    async def addRKG(self, msg, msgContent, file, type):
+        print("RKG detected.")
+        data = await file.read()
+        
+        # Retrieve RKG track ID
+        rkgTrack = special_slot_ids[int.from_bytes(data[7:8], 'big') >> 2]
+        
+        # Check against (possibly) provided track
+        msgTrack = None
+        
+        for word in msgContent:
+            try:
+                temp = track_folders[word.lower()]
+                msgTrack = word.lower()
+                msgContent.remove(word)
+                break
+            except:
+                pass
+        
+        if msgTrack is not None and msgTrack != rkgTrack:
+            error = f"Your message says you're uploading a ghost for {track_folders[msgTrack][4:]} while the RKG corresponds to {track_folders[rkgTrack][4:]}. Commit aborted."
+            details = ""
+            cmd = 'add'
+            await self.embedError(msg, error, cmd, details)
+            return
+        
+        # Check for empty message after !add bkt [track]
+        if len(msgContent) == 0:
+            error = "No category or number of laps provided"
+            details = "catlap"
+            cmd = 'add'
+            await self.embedError(msg, error, cmd, details)
+            return
+        
+        # Check category
+        for word in msgContent:
+            try:
+                category = category_folders[word.lower()]
+                msgContent.remove(word)
+                break
+            except:
+                pass
+        else:
+            error = f"No category specified"
+            details = "cat"
+            cmd = 'add'
+            await self.embedError(msg, error, cmd, details)
+            return
+            
+        # Check for empty message after !add bkt cat
+        if len(msgContent) == 0:
+            error = "No number of laps provided"
+            details = "cat"
+            cmd = 'add'
+            await self.embedError(msg, error, cmd, details)
+            return
+        try:
+            laps = lap_choices[msgContent[0]]
+            msgContent.pop(0)
+        except:
+            error = f"Expected 3lap/flap, found {msgContent[0]}"
+            details = "lap"
+            cmd = 'add'
+            await self.embedError(msg, error, cmd, details)
+            return
+            
+        commitMsg = ' '.join(x for x in msgContent)
+        
+        if commitMsg == '':
+            error = "Please add some change notes for your ghost"
+            details = ''
+            cmd = 'add'
+            await self.embedError(msg, error, cmd, details)
+            return
+        
+        # We have all we need. Add the file
+        path = track_folders[rkgTrack] + category + '/' + laps + ".rkg"
+        path = path.replace(' ', '%20')
+        
+        await self.uploadData(msg, path, rkgTrack, category, laps, commitMsg, data, type)
+    
+    async def addWIP(self, msg, msgContent):
+        pass
     
     async def decodeTimes(self, binary, offset):
         minutes = int.from_bytes(binary[offset:offset+1], 'big') >> 1
@@ -280,20 +454,6 @@ class Bot(discord.Client):
                       'rMR    rWS    rMC    rBC```'
         return response
     
-    async def embedError(self, msg, error, cmd, details):
-        cmdHelp = await self.cmdHelp(cmd)
-        if 'track' in details:
-            cmdHelp += "\nUse one of the following:\n" + await self.printTracks(msg)
-        if 'attachment' in details:
-            cmdHelp += "\nAttach an RKG file to upload to the repository.\n"
-        if 'cat' in details:
-            cmdHelp += "\nUse one of the following: `UR NU NG`\n"
-        if 'lap' in details:
-            cmdHelp += "\nUse one of the following: `3lap flap`\n"
-            
-        embed = discord.Embed(title=error, description=cmdHelp, color=0xC13353)
-        await msg.channel.send(embed=embed)
-    
     async def bkt(self, msg, msgContent):
         # Get track folder
         if len(msgContent) == 0:
@@ -340,6 +500,39 @@ class Bot(discord.Client):
         # Parse the URLs
         await self.bktEmbed(msg, files)
 
+    async def uploadData(self, msg, path, track, category, laps, commitMsg, data, type):
+        # ADD USERNAME
+        
+        forkRepo = repo.create_fork()
+        
+        # Check if path exists
+        try:
+            contents = forkRepo.get_contents(path)
+            forkRepo.update_file(path, commitMsg, data, contents.sha)
+        except:
+            forkRepo.create_file(path, commitMsg, data)
+            
+        # Now perform cross-repository pull request
+        pull = repo.create_pull(title=commitMsg, head="MKWTASBOT:main", base="main", body='')
+        pullURL = pull.html_url
+        
+        time.sleep(1)
+        
+        backoff = 2
+        while True:
+            try:
+                forkRepo.delete()
+                break
+            except:
+                time.sleep(backoff)
+                backoff = backoff**2
+        
+        # Embed obj
+        title = f"Successfully uploaded: `{track_folders[track][4:]} {category[1:]} {laps} {type.upper()}`"
+        embed = discord.Embed(title=title, description=f"[[PR]]({pullURL})", color=0x89DA72)
+        embed.add_field(name="Notes", value=commitMsg, inline=False)
+        await msg.channel.send(embed=embed)
+        return
 
 if __name__ == '__main__':
     client = Bot()
